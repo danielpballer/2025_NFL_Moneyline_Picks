@@ -21,13 +21,13 @@ library(purrr)
 library(rvest)
 
 # Only thing you need to change (update current week)
-current_week = 15
+current_week = 1
 
 ################################ Scraping Scores ##############################
 
 week = as.list(seq(1:current_week)) # List of weeks
 
-url = "https://www.cbssports.com/nfl/schedule/2024/regular/"  #base URL
+url = "https://www.cbssports.com/nfl/schedule/2025/regular/"  #base URL
 #url = "https://www.cbssports.com/nfl/schedule/2024/preseason/"  #base URL
 
 list_of_pages = function(x){
@@ -172,7 +172,7 @@ week%>%
 ```{r}
 week_odds = current_week+1
   
-games = read_html(glue::glue("https://www.cbssports.com/nfl/schedule/2024/regular/{week_odds}"))%>%
+games = read_html(glue::glue("https://www.cbssports.com/nfl/schedule/2025/regular/{week_odds}"))%>%
     html_nodes(".TableBase-bodyTd:nth-child(1) a")%>%
     html_text() %>% 
     matrix(ncol = 2, byrow = TRUE) %>%
@@ -182,7 +182,8 @@ games = read_html(glue::glue("https://www.cbssports.com/nfl/schedule/2024/regula
 
 
 read_html("https://www.sportsline.com/nfl/odds/money-line/")%>%
-    html_nodes("td:nth-child(8) .primary , .FqxOT .AA-Dxj")%>%
+    # html_nodes("td:nth-child(8) .primary , .FqxOT .AA-Dxj")%>%
+    html_nodes("td:nth-child(8) .secondary , .kLcZjE .dEoYge")%>%
     html_text() %>% 
     matrix(ncol = 2, byrow = TRUE) %>%
     as.data.frame() %>% 
@@ -245,3 +246,4 @@ read_html("https://www.cbssports.com/nfl/schedule/2020/regular/1/")%>%
     rename(`Score` = V1) %>% 
     separate(Score, sep = " ", into = c("TM1","Score1", "vs", "TM2", "Score2"))
 ```
+
