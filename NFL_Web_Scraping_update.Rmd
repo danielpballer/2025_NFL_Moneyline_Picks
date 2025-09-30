@@ -21,7 +21,7 @@ library(purrr)
 library(rvest)
 
 # Only thing you need to change (update current week)
-current_week = 1
+current_week = 4
 
 ################################ Scraping Scores ##############################
 
@@ -245,5 +245,18 @@ read_html("https://www.cbssports.com/nfl/schedule/2020/regular/1/")%>%
     as.data.frame()%>%
     rename(`Score` = V1) %>% 
     separate(Score, sep = " ", into = c("TM1","Score1", "vs", "TM2", "Score2"))
+```
+
+```{r}
+library(httr)
+library(jsonlite)
+
+url <- "https://mab.chartbeat.com/mab_strategy/headline_testing/get_strategy/?host=sportsline.com&domain=sportsline.com&path=%2Fnfl%2Fodds%2F"  # replace with real one
+res <- GET(url)
+data <- fromJSON(content(res, as = "text"))
+
+head(data)
+
+data$data$path[1]
 ```
 
