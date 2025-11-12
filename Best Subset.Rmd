@@ -1,0 +1,220 @@
+---
+title: "Best Subset"
+output: html_document
+date: "2023-12-12"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Finding the best subset of predictors.
+
+## First lets start with the sharps (Picked all season and are over 60 percent.)
+
+Run all code in the index script prior to runing this one.
+```{r selecting the top predctors}
+#First lets get a list of those over 60 percent and picked all weeks
+
+the_top = indiv_disp_2 %>% filter(`Adj Season Percent`>.50) %>% select(Name) %>% pull()
+
+#Selecting best certain weeks.  
+the_top = full_season %>% pivot_longer(cols = 2:10, names_to = "week", values_to = "games") %>% mutate(games = case_when(is.na(games)==T~0, TRUE~games)) %>% pivot_wider(names_from = "week", values_from = "games") %>% mutate(tg = `Week 1`+`Week 2` +`Week 3` +`Week 4` +`Week 5` +`Week 6` +`Week 7` +`Week 8`) %>% select(Name, tg) %>% filter(is.na(tg)!=TRUE) %>% arrange(-tg) %>% top_n(7) %>% pull(Name)
+
+#function to filter all predictions for those over 60 percent and picked all weeks
+only_the_top = function(inst.picks){
+  inst.picks %>% 
+  filter(Name %in% the_top)
+}
+
+#Create the data set of only top pickers
+only_top_picks = map(inst.picks, only_the_top)
+```
+
+# Getting group predictions for the top pickers
+```{r Group Predictions, include=FALSE}
+#Creating the list of everyones predictions each week.
+top_games = map(only_top_picks, games_fn)
+
+#Creating the prediction table.  
+top_pred_table = map(top_games, pred_table_fn)
+
+#Adding who won to the predictions
+top_with_winners = map2(top_pred_table, winners, adding_winners)
+
+#Creating results for each week.
+top_results = map2(top_with_winners,weekly_number_of_games, results_fn)
+```
+
+Calculate metrics on this group
+```{r Weekly and season Group Results, include=FALSE}
+# Printing the weekly and season win percentage     
+
+#how many games correct, incorrect, and not picked each week
+top_weekly_group_correct = map(top_results, weekly_group_correct_fn)  
+
+#how many games were picked each week
+top_weekly_games_picked = map2(top_weekly_group_correct, weekly_number_of_games, weekly_games_picked_fn)
+
+#Calculating the number of correct picks for each week
+top_weekly_group_correct_picks = map(top_weekly_group_correct, weekly_group_correct_picks_fn)
+
+#Calculating weekly win percentage
+top_weekly_win_percentage = map2(top_weekly_group_correct_picks, top_weekly_games_picked, weekly_win_percentage_fn)
+
+#Calculating season win percentage
+top_season_win_percentage = round(sum(unlist(top_weekly_group_correct_picks))/sum(unlist(top_weekly_games_picked)),4)
+
+#Calculating number of games picked this season
+top_season_games = sum(unlist(top_weekly_games_picked))
+
+#calculating season wins
+top_season_wins = sum(unlist(top_weekly_group_correct_picks))
+
+#calculating the number of people who picked this week
+top_Total = dim(only_top_picks[[length(weeks)]])[1]
+```
+
+```{r plotting group results, include=FALSE}
+#Previous Weeks data
+top_group_season_for_plotting = unlist(top_weekly_win_percentage) %>% as.data.frame() %>% 
+  rename(`Win Percentage` = ".") %>% 
+  add_column(Week = unlist(weeks))
+
+
+compare = bind_rows(top_group_season_for_plotting %>% mutate(group = "top"), group_season_for_plotting %>% mutate(group = "all"))
+
+#making the plot
+top_inst_group_season_plot = compare %>% 
+ggplot(aes(x = as.factor(Week), y = `Win Percentage`, col = group))+
+  geom_point()+
+  geom_path(aes(x = Week))+
+  ylim(c(0, 1)) +
+  xlab("NFL Week") + 
+  ylab("Correct Percentage")+
+  ggtitle("Top Pickers Weekly Group Correct Percentage")+
+  theme_classic()+
+  theme(plot.title = element_text(hjust = 0.5, size = 18))
+
+top_inst_group_season_plot
+
+c(top_season_win_percentage, season_win_percentage)
+```
+
+#Function for all 
+
+```{r}
+perc = as.list(seq(from = .50, to =.66, by = .01))
+
+all_fun = function(perc){
+#First lets get a list of those over x percent and picked all weeks
+
+the_top = indiv_disp_2 %>% filter(`Adj Season Percent`>perc) %>% select(Name) %>% pull()
+
+#Selecting best certain weeks.  
+#the_top = full_season %>% pivot_longer(cols = 2:15, names_to = "week", values_to = "games") %>% mutate(games = case_when(is.na(games)==T~0, TRUE~games)) %>% pivot_wider(names_from = "week", values_from = "games") %>% mutate(tg = `Week 1`+`Week 2` +`Week 3` +`Week 4` +`Week 5` +`Week 6` +`Week 7` +`Week 8` +`Week 9`+ `Week 10` +`Week 11` +`Week 12` +`Week 13`+ `Week 14`) %>% select(Name, tg) %>% filter(is.na(tg)!=TRUE) %>% arrange(-tg) %>% top_n(10) %>% pull(Name)
+
+#function to filter all predictions for those over 60 percent and picked all weeks
+only_the_top = function(inst.picks){
+  inst.picks %>% 
+  filter(Name %in% the_top)
+}
+
+#Create the data set of only top pickers
+only_top_picks = map(inst.picks, only_the_top)
+
+#Creating the list of everyones predictions each week.
+top_games = map(only_top_picks, games_fn)
+
+#Creating the prediction table.  
+top_pred_table = map(top_games, pred_table_fn)
+
+#Adding who won to the predictions
+top_with_winners = map2(top_pred_table, winners, adding_winners)
+
+#Creating results for each week.
+top_results = map2(top_with_winners,weekly_number_of_games, results_fn)
+
+# Printing the weekly and season win percentage     
+
+#how many games correct, incorrect, and not picked each week
+top_weekly_group_correct = map(top_results, weekly_group_correct_fn)  
+
+#how many games were picked each week
+top_weekly_games_picked = map2(top_weekly_group_correct, weekly_number_of_games, weekly_games_picked_fn)
+
+#Calculating the number of correct picks for each week
+top_weekly_group_correct_picks = map(top_weekly_group_correct, weekly_group_correct_picks_fn)
+
+#Calculating weekly win percentage
+top_weekly_win_percentage = map2(top_weekly_group_correct_picks, top_weekly_games_picked, weekly_win_percentage_fn)
+
+#Calculating season win percentage
+top_season_win_percentage = round(sum(unlist(top_weekly_group_correct_picks))/sum(unlist(top_weekly_games_picked)),4)
+
+#Calculating number of games picked this season
+top_season_games = sum(unlist(top_weekly_games_picked))
+
+#calculating season wins
+top_season_wins = sum(unlist(top_weekly_group_correct_picks))
+
+#calculating the number of people who picked this week
+top_Total = dim(only_top_picks[[length(weeks)]])[1]
+
+
+
+c(perc, top_season_win_percentage, season_win_percentage)
+}
+
+map(perc, all_fun)
+```
+
+
+```{r}
+#Previous Weeks data
+top_group_season_for_plotting = unlist(top_weekly_win_percentage) %>% as.data.frame() %>% 
+  rename(`Win Percentage` = ".") %>% 
+  add_column(Week = unlist(weeks))
+
+
+compare = bind_rows(top_group_season_for_plotting %>% mutate(group = "top"), group_season_for_plotting %>% mutate(group = "all"))
+
+#making the plot
+top_inst_group_season_plot = compare %>% 
+ggplot(aes(x = as.factor(Week), y = `Win Percentage`, col = group))+
+  geom_point()+
+  geom_path(aes(x = Week))+
+  ylim(c(0, 1)) +
+  xlab("NFL Week") + 
+  ylab("Correct Percentage")+
+  ggtitle("Top Pickers Weekly Group Correct Percentage")+
+  theme_classic()+
+  theme(plot.title = element_text(hjust = 0.5, size = 18))
+
+top_inst_group_season_plot
+```
+
+
+
+Calculate predictions for the upcoming week.
+```{r}
+#Creating the list of group predictions each week.
+top_games = map(only_top_picks, games_fn)
+
+#Creating the prediction table.  
+top_pred_table = map(top_games, pred_table_fn)
+
+#Printing table of instructor predictions
+top_pred_table[[length(top_pred_table)]] %>% mutate(Game = row_number()) %>% 
+  rename(`Votes For` = votes_for, `Votes Against` = votes_against) %>% 
+  gt() %>% 
+  cols_align(
+    align = "center") %>% 
+   tab_header(
+    title = md("This Week's Predictions"),
+    subtitle = md(glue("Week {length(weeks)}"))
+    ) %>% 
+   tab_options(
+    data_row.padding = px(3)
+   )
+```
