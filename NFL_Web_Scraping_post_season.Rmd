@@ -22,15 +22,15 @@ library(rvest)
 
 # Only thing you need to change (update current week)
 reg_season_weeks = 18
-current_week = 21
+current_week = 19
 
 ################################ Scraping Scores ##############################
 
 week = as.list(seq(1:reg_season_weeks)) # List of weeks
 week_post = as.list(seq(from = 19, to = current_week, by = 1))
 
-url = "https://www.cbssports.com/nfl/schedule/2023/regular/"  #base URL regular season
-url_post = "https://www.cbssports.com/nfl/schedule/2023/postseason/"  #base URL post season
+url = "https://www.cbssports.com/nfl/schedule/2025/regular/"  #base URL regular season
+url_post = "https://www.cbssports.com/nfl/schedule/2025/postseason/"  #base URL post season
 
 #Creating the list of regular season pages
 list_of_pages = function(x){
@@ -97,10 +97,30 @@ cbs_week = function(week, url_cbs){
     mutate(week = week)
 }
 
-cbs_week_list %>%
-  map(list_of_pages_cbs) %>% 
-  map2(cbs_week_list,.,cbs_week)%>%
-  bind_rows() %>% 
+
+# Use unless timeouts.  Broken up below
+# cbs_week_list %>%
+#   map(list_of_pages_cbs) %>% 
+#   map2(cbs_week_list,.,cbs_week)%>%
+#   bind_rows() %>% 
+#   write_csv(glue::glue("./CSV_Data_Files/CBS_Experts_{current_week}.csv"))
+
+#create a list of CBS urls
+cbs_url_list = cbs_week_list%>%
+  map(list_of_pages_cbs) 
+
+#scrape the first half of the list
+cbs_set1 = cbs_url_list[1:10] %>% 
+  map2(cbs_week_list[1:10],.,cbs_week)%>%
+  bind_rows() 
+
+#scrape the second half of the list
+cbs_set2 = cbs_url_list[11:current_week] %>% 
+  map2(cbs_week_list[11:current_week],.,cbs_week)%>%
+  bind_rows()
+
+#Bind the 2 sets and save
+bind_rows(cbs_set1, cbs_set2)%>% 
   write_csv(glue::glue("./CSV_Data_Files/CBS_Experts_{current_week}.csv"))
 
 ###################### Scraping CBS Season Expert Predictions #########################
@@ -123,11 +143,31 @@ cbs_season = function(week, url_cbs){
     mutate(week = week)
 }
 
-cbs_week_list%>%
-  map(list_of_pages_cbs) %>% 
-  map2(cbs_week_list,.,cbs_season)%>%
-  bind_rows() %>% 
+#use unless time out 
+# cbs_week_list%>%
+#   map(list_of_pages_cbs) %>% 
+#   map2(cbs_week_list,.,cbs_season)%>%
+#   bind_rows() %>% 
+#   write_csv(glue::glue("./CSV_Data_Files/CBS_Experts_Season_{current_week}.csv"))
+
+#create a list of CBS urls
+cbs_url_list = cbs_week_list%>%
+  map(list_of_pages_cbs) 
+
+#scrape the first half of the list
+cbs_season_set1 = cbs_url_list[1:10] %>% 
+  map2(cbs_week_list[1:10],.,cbs_season)%>%
+  bind_rows() 
+
+#scrape the second half of the list
+cbs_season_set2 = cbs_url_list[11:current_week] %>% 
+  map2(cbs_week_list[11:current_week],.,cbs_season)%>%
+  bind_rows() 
+
+#Bind the 2 sets and save
+bind_rows(cbs_season_set1, cbs_season_set2)%>% 
   write_csv(glue::glue("./CSV_Data_Files/CBS_Experts_Season_{current_week}.csv"))
+
 
 #################### Scraping ESPN Weekly Expert Predictions #########################
 espn_post_week = as.list(seq(from = 1, to = length(week_post), by = 1)) # List of weeks
@@ -241,7 +281,7 @@ post_espn_season = espn_post_week%>%
   bind_rows() 
 
 reg_18 = reg_espn_season %>% filter(week==18) 
-last_week = reg_18
+last_week = reg_18 %>% slice(1:10) #to account that only 10 people are picking playoff games
 all_espn_season = reg_espn_season
 
 for (i in 19:current_week){
