@@ -16,7 +16,7 @@ output:
 
 ```{r setup, include=FALSE}
 #    source_code: embed
-options(show.error.messages = FALSE)
+options(show.error.messages = FALSE) 
 library(flexdashboard)
 library(tidyverse)
 library(data.table)
